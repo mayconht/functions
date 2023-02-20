@@ -41,10 +41,13 @@ const main = async () => {
     ignore: [
       '**/node_modules/**', // ignore node_modules directories
       '**/_*/**', // ignore files inside directories that start with _
-      '**/_*' // ignore files that start with _
+      '**/_*', // ignore files that start with _
+      '**/_middleware/**' // ignore _middleware directory
+
     ]
   })
 
+// * Load all the functions
   for (const file of files) {
     const { default: handler } = await import(path.join(functionsPath, file))
 
@@ -67,6 +70,29 @@ const main = async () => {
     }
   }
 
+// * Load all the middleware
+  const middlewarePath = path.join(process.cwd(), process.env.FUNCTIONS_RELATIVE_PATH + '/_middleware')
+  const middlewareFiles = glob.sync('**/*.@(js|ts)', {
+    cwd: middlewarePath,
+    ignore: [
+      '**/node_modules/**', // ignore node_modules directories
+      '**/_*/**', // ignore files inside directories that start with _
+      '**/_*', // ignore files that start with _
+    ]
+  })
+
+  for (const file of middlewareFiles) {
+    const { default: handler } = await import(path.join(middlewarePath, file))
+    try{
+      if(handler) {
+        app.use(handler)
+      }
+    } catch (error) {
+      console.warn(`Unable to load file ${file} as a middleware`)
+      continue
+    }
+  }
+    
   app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`)
   })
